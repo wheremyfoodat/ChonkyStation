@@ -11,9 +11,14 @@
 class gpu
 {
 
-public:		// trongle stuff
-	unsigned int VBO = 0;
-	unsigned int VAO = 0;
+public:
+	// VAO & VBO for untextured polygons
+	GLuint VAO = 0;
+	GLuint VBO = 0;
+	// VAO & VBO for textured polygons
+	GLuint TextureVAO;
+	GLuint TextureVBO;
+
 	GLuint FBO = 0; 
 	GLuint VramTexture = 0;
 	GLuint SampleVramTexture = 0;
