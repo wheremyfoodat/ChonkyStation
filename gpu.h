@@ -170,7 +170,6 @@ public:
 
 	int xpos = 0;
 	int ypos = 0;	// Used to keep track of memory transfers
-	uint32_t* pixels;
 	uint32_t fifo[12] = {};
 	int cmd_length = 0;
 	int cmd_left = 0;

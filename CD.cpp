@@ -3,16 +3,16 @@
 CD::CD() {}
 void CD::OpenFile(const char* directory) {
 	iso = fopen(directory, "rb");
-	dir = directory;
+	Dir = directory;
 	IsCDInserted = true;
 }
 
 uint8_t CD::ReadDataByte() {
-	if (bytes_read >= ((WholeSector ? (SECTOR_SIZE - 0xc) : CDXA_DATA_SIZE) - 1)) {
+	if (BytesRead >= ((WholeSector ? (SECTOR_SIZE - 0xc) : CDXA_DATA_SIZE) - 1)) {
 		printf("[All data has been read]\n");
 		drqsts = 0;
 	}
-	return SectorBuffer[(WholeSector ? 0x0c : 0x18) + bytes_read++];
+	return SectorBuffer[(WholeSector ? 0x0c : 0x18) + BytesRead++];
 }
 
 void CD::read(uint32_t loc) {

@@ -4,8 +4,6 @@
 Bus* bus;
 
 gpu::gpu() {
-	// Initialize pixel array
-	pixels = new uint32_t[480 * 640];
 	debug = false;
 }
 
