@@ -746,20 +746,6 @@ void RenderVRAMViewer(cpu* Cpu) {
     ImGui::End();
 }
 int main(int argc, char** argv) {
-    /*struct Code : Xbyak::CodeGenerator {
-        Code(int x)
-        {
-            mov(eax, x);
-            ret();
-        }
-    };
-
-    Code c(5);
-    int (*f)() = c.getCode<int (*)()>();
-    printf("ret=%d\n", f()); // ret = 5
-
-    exit(1);*/
-
     if (!glfwInit()) {
         exit(1);
     }
@@ -986,8 +972,6 @@ int main(int argc, char** argv) {
                 frameCount = 0;
                 prevTime = currTime;
             }
-            //Cpu.bus.Gpu.ClearScreen();
-            //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         }
         else {
             if (test) printf("%x\n", Cpu.pc);
