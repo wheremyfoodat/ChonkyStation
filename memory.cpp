@@ -13,7 +13,6 @@ https://wheremyfoodat.github.io/software-fastmem/ */
 
 void ScheduleVBLANK_(void* dataptr) {
 	memory* memoryptr = (memory*)dataptr;
-	//printf("fuck\n");
 	memoryptr->I_STAT |= 1;
 }
 
@@ -34,6 +33,23 @@ void DMAIRQ(void* dataptr) {
 }
 memory::memory() {
 	debug = false;
+
+	constexpr size_t pageSize = 64 * 1024; // 64KB pages
+	readTable.resize(0x10000, 0);
+	writeTable.resize(0x10000, 0);
+
+	// Map RAM as R/W
+	for (size_t i = 0; i < 0x20; i++) {
+		const auto ptr = (uintptr_t)&ram[i * pageSize];
+
+		readTable[i + 0x0000] = ptr; // KUSEG
+		readTable[i + 0x8000] = ptr; // KSEG0
+		readTable[i + 0xA000] = ptr; // KSEG1
+		
+		writeTable[i + 0x0000] = ptr; // KUSEG
+		writeTable[i + 0x8000] = ptr; // KSEG0
+		writeTable[i + 0xA000] = ptr; // KSEG1
+	}
 }
 
 memory::~memory() {
@@ -83,6 +99,13 @@ uint32_t memory::mask_address(const uint32_t addr)
 }
 
 uint8_t memory::read(uint32_t addr) {
+	const auto page = addr >> 16;
+	const auto pointer = readTable[page];
+
+	if (pointer != 0) {// if the address is in the fast path
+		return *(uint8_t*)(pointer + (addr & 0xffff));
+	}
+
 	uint32_t bytes;
 	uint32_t masked_addr = mask_address(addr);
 
@@ -191,6 +214,13 @@ uint8_t memory::read(uint32_t addr) {
 }
 
 uint16_t memory::read16(uint32_t addr) {
+	const auto page = addr >> 16;
+	const auto pointer = readTable[page];
+
+	if (pointer != 0) {// if the address is in the fast path
+		return *(uint16_t*)(pointer + (addr & 0xffff));
+	}
+
 	uint32_t bytes;
 	uint32_t masked_addr = mask_address(addr);
 	
@@ -312,14 +342,17 @@ uint16_t memory::read16(uint32_t addr) {
 }
 
 uint32_t memory::read32(uint32_t addr) {
+	const auto page = addr >> 16;
+	const auto pointer = readTable[page];
+
+	if (pointer != 0) {// if the address is in the fast path
+		return *(uint32_t*)(pointer + (addr & 0xffff));
+	}
+
 	uint32_t bytes;
 	uint32_t masked_addr = mask_address(addr);
 
 	if (masked_addr == 0xfffffff8) return 0;
-	/*if (masked_addr == 0xfffffff4) return 0;
-	if (masked_addr == 0x00fffff4) return 0;
-	if (masked_addr == 0x00fffff8) return 0;
-	if (masked_addr == 0x00fffffc) return 0;*/
 
 	// Timer 1 counter mode
 	if (masked_addr == 0x1f801114) {
@@ -497,7 +530,14 @@ uint32_t memory::read32(uint32_t addr) {
 }
 
 void memory::write(uint32_t addr, uint8_t data, bool log) {
-	uint32_t bytes;
+	const auto page = addr >> 16;
+	const auto pointer = writeTable[page];
+
+	if (pointer != 0) {// if the address is in the fast path
+		*(uint8_t*)(pointer + (addr & 0xffff)) = data;
+		return;
+	}
+
 	uint32_t masked_addr = mask_address(addr);
 
 	if (masked_addr == 0x1f8010f6) return;
@@ -618,7 +658,14 @@ void memory::write(uint32_t addr, uint8_t data, bool log) {
 }
 
 void memory::write32(uint32_t addr, uint32_t data) {
-	uint32_t bytes;
+	const auto page = addr >> 16;
+	const auto pointer = writeTable[page];
+
+	if (pointer != 0) {// if the address is in the fast path
+		*(uint32_t*)(pointer + (addr & 0xffff)) = data;
+		return;
+	}
+
 	uint32_t masked_addr = mask_address(addr);
 
 	if (masked_addr == 0x1f802084) {	// Openbios stuff
@@ -840,6 +887,14 @@ void memory::write32(uint32_t addr, uint32_t data) {
 }
 
 void memory::write16(uint32_t addr, uint16_t data) {
+	const auto page = addr >> 16;
+	const auto pointer = writeTable[page];
+
+	if (pointer != 0) {// if the address is in the fast path
+		*(uint16_t*)(pointer + (addr & 0xffff)) = data;
+		return;
+	}
+
 	uint32_t masked_addr = mask_address(addr);
 
 	if (masked_addr == 0x1F801070) { // I_STAT
@@ -991,6 +1046,21 @@ void memory::loadBios(std::string directory) {
 	bios = readBinary(directory);
 	adler32bios = adler32(bios.data(), 0x80000);
 	//printf("bios hash: 0x%x\n", adler32bios);
+
+	if (bios.size() != 512 * 1024) {
+		printf("Can't handle BIOSes that are not 512 KiB yet\n");
+		exit(-1);
+	}
+
+	// Map BIOS to page table as read-only
+	constexpr size_t pageSize = 64 * 1024;
+	for (size_t i = 0; i < 0x08; i++) {
+		const auto ptr = (uintptr_t)&bios[i * pageSize];
+
+		readTable[i + 0x1FC0] = ptr; // KUSEG
+		readTable[i + 0x9FC0] = ptr; // KSEG0
+		readTable[i + 0xBFC0] = ptr; // KSEG1
+	}
 }
 
 uint32_t memory::loadExec(std::string directory) {
