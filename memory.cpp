@@ -209,7 +209,7 @@ uint8_t memory::read(uint32_t addr) {
 		return 0xff;
 	}
 
-	printf("\nUnhandled read 0x%.8x @ 0x%08x", masked_addr, pc);
+	printf("\nUnhandled read 0x%.8x @ 0x%08x", masked_addr, *pc);
 	exit(0);
 }
 
@@ -273,7 +273,7 @@ uint16_t memory::read16(uint32_t addr) {
 	// controllers
 	if (masked_addr == 0x1f801044) { // JOY_STAT
 		uint16_t data = pads.joy_stat;
-		//printf("[PAD] Read 0x%x from JOY_STAT @ 0x%08x\n", data, pc);
+		//printf("[PAD] Read 0x%x from JOY_STAT @ 0x%08x\n", data, *pc);
 		//return rand() & 0b111;
 		return data;
 	}
@@ -337,7 +337,7 @@ uint16_t memory::read16(uint32_t addr) {
 		return 0;
 	}
 
-	printf("\nUnhandled read 0x%.8x @ 0x%08x", masked_addr, pc);
+	printf("\nUnhandled read 0x%.8x @ 0x%08x", masked_addr, *pc);
 	exit(0);
 }
 
@@ -488,7 +488,7 @@ uint32_t memory::read32(uint32_t addr) {
 	if (masked_addr == 0x1f801044) { // JOY_STAT
 		pads.joy_baud -= rand() % 1024;
 		uint32_t data = pads.joy_stat | (pads.joy_baud << 11);
-		debug_warn("[PAD] Read 0x%x from JOY_STAT @ 0x%08x\n", data, pc);
+		debug_warn("[PAD] Read 0x%x from JOY_STAT @ 0x%08x\n", data, *pc);
 		//return rand() & 0b111;
 		return data;
 	}
@@ -521,7 +521,7 @@ uint32_t memory::read32(uint32_t addr) {
 	if (masked_addr == 0x1f801014) return 0; // SPU Delay/Size
 	if (masked_addr == 0x1f801018) return 0; // CDROM Delay/Size
 	if (masked_addr == 0x1f801020) return 0; // COM_DELAY / COMMON_DELAY
-	printf("\nUnhandled read 0x%.8x @ 0x%08x", masked_addr, pc);
+	printf("\nUnhandled read 0x%.8x @ 0x%08x", masked_addr, *pc);
 	//printf("\n$v0 is 0x%x\n", regs[2]);
 	std::ofstream file("ram.bin", std::ios::binary);
 	file.write((const char*)ram, 0x200000);
@@ -754,6 +754,7 @@ void memory::write32(uint32_t addr, uint32_t data) {
 
 	if (masked_addr == 0x1f8010a8) {	// control
 		Ch2.CHCR = data;
+		*shouldCheckDMA = true;
 		return;
 	}
 
@@ -770,6 +771,7 @@ void memory::write32(uint32_t addr, uint32_t data) {
 
 	if (masked_addr == 0x1f8010b8) {	// control
 		Ch3.CHCR = data;
+		*shouldCheckDMA = true;
 		return;
 	}
 
@@ -784,6 +786,7 @@ void memory::write32(uint32_t addr, uint32_t data) {
 	}
 	if (masked_addr == 0x1f8010c8) {
 		Ch4.CHCR = data;
+		*shouldCheckDMA = true;
 		return;
 	}
 	// channel 6
@@ -799,6 +802,7 @@ void memory::write32(uint32_t addr, uint32_t data) {
 
 	if (masked_addr == 0x1f8010e8) {	// control
 		Ch6.CHCR = data;
+		*shouldCheckDMA = true;
 		return;
 	}
 	

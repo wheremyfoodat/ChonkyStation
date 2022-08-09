@@ -34,8 +34,9 @@ public:
 	std::vector <uint8_t> bios;
 	uint32_t adler32bios = 0;
 
-	uint32_t pc = 0;
+	uint32_t* pc;
 	uint32_t* regs;
+	bool* shouldCheckDMA;
 	uint8_t* ram = new uint8_t[0x200000];
 	uint8_t* spu_ram = new uint8_t[0x80000];
 	uint8_t* scratchpad = new uint8_t[1024];

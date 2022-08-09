@@ -22,6 +22,8 @@ cpu::cpu(std::string rom_directory, std::string bios_directory, bool running_in_
 
 	bus.mem.logwnd = &log;
 	bus.mem.regs = regs;
+	bus.mem.pc = &pc;
+	bus.mem.shouldCheckDMA = &shouldCheckDMA;
 
 	// tests
 #ifdef TEST_GTE
@@ -51,6 +53,8 @@ void cpu::reset() {
 		i = 0;
 	}
 	pc = 0xbfc00000;
+	delay = false;
+	shouldCheckDMA = false;
 }
 
 void cpu::sideloadExecutable(std::string directory) {
@@ -473,8 +477,6 @@ void cpu::execute(uint32_t instr) {
 	}
 
 	uint8_t primary = instr >> 26;
-
-	bus.mem.pc = pc;
 
 	if (delay) {	// branch delay slot
 		pc = jump - 4;
@@ -1127,7 +1129,11 @@ void IRQ7(void* dataptr) {
 	else cpuptr->bus.mem.pads.abort_irq = false;
 }
 void cpu::step() {
-	check_dma(); // TODO: Only check DMA when control registers are written to   
+	if (shouldCheckDMA) {
+		shouldCheckDMA = false;
+		check_dma(); // TODO: Only check DMA when control registers are written to
+	}
+
 	if (bus.mem.I_STAT & bus.mem.I_MASK) {
 		COP0.regs[13] |= (1 << 10);
 		if ((COP0.regs[12] & 1) && (COP0.regs[12] & (1 << 10))) {
