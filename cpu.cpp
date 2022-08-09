@@ -21,6 +21,7 @@ cpu::cpu(std::string rom_directory, std::string bios_directory, bool running_in_
 	delay = false;
 
 	bus.mem.logwnd = &log;
+	bus.mem.regs = regs;
 
 	// tests
 #ifdef TEST_GTE
@@ -471,30 +472,28 @@ void cpu::execute(uint32_t instr) {
 		return;
 	}
 
-
 	uint8_t primary = instr >> 26;
-	uint8_t secondary = instr & 0x3f;
-	
+
 	bus.mem.pc = pc;
-	bus.mem.regs = regs;
 
 	if (delay) {	// branch delay slot
 		pc = jump - 4;
 		delay = false;
 	}
 
-	uint8_t rs = (instr >> 21) & 0x1f;
-	uint8_t rd = (instr >> 11) & 0x1f;
-	uint8_t rt = (instr >> 16) & 0x1f;
-	int32_t signed_rs = int32_t(regs[rs]);
-	uint16_t imm = instr & 0xffff;
-	uint32_t sign_extended_imm = uint32_t(int16_t(imm));
-	int32_t signed_sign_extended_imm = int32_t(uint32_t(int32_t(int16_t(imm))));	// ??????????? is this even needed
-	uint8_t shift_imm = (instr >> 6) & 0x1f;
-	uint32_t jump_imm = instr & 0x3ffffff;
+	// Quick and dirty hack. TODO: Replace this with a bitfield
+	#define shift_imm ((instr >> 6) & 0x1f)
+	#define rd ((instr >> 11) & 0x1f)
+	#define rt ((instr >> 16) & 0x1f)
+	#define rs ((instr >> 21) & 0x1f)
+	#define imm (instr & 0xffff)
+	#define sign_extended_imm uint32_t(int16_t(imm))
+	#define signed_rs int32_t(regs[rs])
+	#define jump_imm (instr & 0x3ffffff)
 
 	switch (primary) {
 	case 0x00: {
+		uint8_t secondary = instr & 0x3f;
 		switch (secondary) {
 		case 0x00: {
 			uint32_t result = regs[rt] << shift_imm;
@@ -804,7 +803,7 @@ void cpu::execute(uint32_t instr) {
 	}
 	case 0x0A: {
 		regs[rt] = 0;
-		if (signed_rs < signed_sign_extended_imm)
+		if (signed_rs < (int32_t)sign_extended_imm)
 			regs[rt] = 1;
 		debug_log("slti %s, %s, 0x%.4X\n", reg[rs].c_str(), reg[rt].c_str(), imm);
 		break;
@@ -838,17 +837,11 @@ void cpu::execute(uint32_t instr) {
 		uint8_t cop_instr = instr >> 21;
 		switch (cop_instr) {
 		case(0b00000): { // mfc0
-			uint8_t rs = (instr >> 21) & 0x1f;
-			uint8_t rd = (instr >> 11) & 0x1f;
-			uint8_t rt = (instr >> 16) & 0x1f;
-			uint16_t imm = instr & 0xffff;
 			regs[rt] = COP0.regs[rd];
 			debug_log("mfc0 %s, %s\n", reg[rd].c_str(), reg[rt].c_str());
 			break;
 		}
 		case(0b00100): { // mtc0
-			uint8_t rd = (instr >> 11) & 0x1f;
-			uint8_t rt = (instr >> 16) & 0x1f;
 			COP0.regs[rd] = regs[rt];
 			debug_log("mtc0 %s, %s\n", reg[rd].c_str(), reg[rt].c_str());
 			break;
@@ -1104,6 +1097,17 @@ void cpu::execute(uint32_t instr) {
 	}
 	pc += 4;
 }
+
+// Clean up our mess
+#undef shift_imm
+#undef rd
+#undef rt
+#undef rs
+#undef imm
+#undef sign_extended_imm
+#undef signed_rs
+#undef jump_imm
+
 void cpu::check_CDROM_IRQ() {
 	//bus.mem.CDROM.delayedINT();
 	//if (bus.mem.CDROM.queued_read) {
