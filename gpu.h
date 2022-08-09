@@ -22,8 +22,6 @@ public:
 	GLuint FBO = 0; 
 	GLuint VramTexture = 0;
 	GLuint SampleVramTexture = 0;
-	GLuint VramTexture8 = 0;
-	GLuint VramTexture4 = 0;
 	void SyncVRAM();
 	GLint oldFBO = 0;
 	unsigned int id = 0;
